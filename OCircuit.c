@@ -272,7 +272,7 @@ bool hsync = false;
 
 void dma_handler() {
     // Clear the interrupt request.
-    dma_hw->ints0 = 1u << dchan; // 1, 2, 49, 62 are short v syncs, 48 is long v sync
+    dma_hw->ints0 = 1u << dchan; 
     // Give the channel a new addr to read from, and re-trigger it
     
     dma_channel_set_read_addr(dchan, pixels, true); 
@@ -382,25 +382,8 @@ while(1) {
 
 }         
 
-#define UART_ID uart0
-#define BAUD_RATE 9600
-#define UART_TX_PIN 12 // 
-#define UART_RX_PIN 13 //
-
-#define vram_addr 0x50
-
 int main() {     
     //stdio_init_all();
-       
-    //uart_init(UART_ID, BAUD_RATE);
-    //gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-
-    //i2c_init(i2c0, 400 * 1000); // fast mode plus is 1MHz & fast mode is 400 KHz
-    //gpio_set_function(12, GPIO_FUNC_I2C);
-    //gpio_set_function(13, GPIO_FUNC_I2C);
-    //gpio_pull_up(12);
-    //gpio_pull_up(13);
-    //i2c_set_slave_mode(i2c0, true, 0x50);
 
     gpio_init(lat);
     gpio_init(clk);
@@ -411,7 +394,7 @@ int main() {
   
     for(int i=0; i<17; ++i){
       for(int x = 0; x<8; ++x){
-        pixels[i+245][x] = 0x00000000;
+        pixels[i+245][x] = 0x00000000; // lines are visible up to 245, the rest of the lines should have no data
       }
     }
     
@@ -419,7 +402,7 @@ int main() {
 
 
 //sprite16_draw(200, 100, sprite);
-//draw_picture(100, 30, 51, picture); // this function is specific to the picture above, don't use for any others
+//draw_picture(100, 30, 51, picture); // ****this function is specific to the picture above*****
     uint32_t game;
     unsigned char buffer[16];
 
@@ -456,39 +439,20 @@ if(debug){ // fill screen to check for blinking or distortion
     //  }
     //}
    // pixels[100][0] = 0x00000800; // bits are displayed from LSB to MSB per scanline 
-    //pixels[100][7] = 0x80000000; // So the first 12 x positions cannot be used, now its 224 by 244
+    //pixels[100][7] = 0x80000000; 
   
     while(1){
       tight_loop_contents();
     }
 }
 
-while(!debug) {    // fix crooked line ( Has to do with the PIO TX FIFOs, not joining the pixel pio FIFOs causes weird video distortion like the bits are displaced, has to do with when the FIFO is loaded with bits )
-			// if using the DMA + PIO + both cores decreases the quality of the NTSC then have another PICO handle SYNC or PIXELS
+while(!debug) {    
+			
 
   if(Run_from_cart){
-		//	if(uart_getc(uart0) == '-'){          
-		//		uart_read_blocking(UART_ID, buffer, 16); 
-        //uart_read_blocking(UART_ID, addr, 2);
-        //game = buffer[3]<<24|buffer[2]<<16|buffer[1]<<8|buffer[0];
-        //pixels[addr[1]][addr[0]] = game;
-		//	}
-         // printf("reading\n");
-         
-         
-         //i2c_read_raw_blocking(i2c0, buffer, 1); // vram double buffering cant take place in here because this whole loop is paced by i2c
-         //game = buffer[3]<<24|buffer[2]<<16|buffer[1]<<8|buffer[0];
-        // pixels[buffer[4]][buffer[5]] = game;
-        //  for(int i=0; i<16; ++i){     // debug
-        //      printf("%d : %c\n", i, buffer[i]);
-        //  }
-        //  sleep_ms(100);
-  
-
- // for(int i =0;i<6;++i){
-  //  printf("%c\n", buffer[i]);
- // }
-  //sleep_ms(1000);
+		
+  tight_loop_contents();
+		
       
   }
 
@@ -501,7 +465,7 @@ while(!debug) {    // fix crooked line ( Has to do with the PIO TX FIFOs, not jo
           //read_Controller();
           sleep_ms(15);
           
-            plot_pixel(ballx, bally, true);          // Pong animation on the pico 
+            plot_pixel(ballx, bally, true);          // Pong ball animation on the pico 
 
             if(up) --bally;
               
@@ -541,8 +505,8 @@ while(!debug) {    // fix crooked line ( Has to do with the PIO TX FIFOs, not jo
               plot_pixel(paddle2x, paddle2y+line, false);
             }
             for(int line = 0; line < 1; ++line){
-              plot_pixel(paddle1x, paddle1y+20+line, true); // dont drag paddle pixels = erasing 5 lines above & below ahead
-              plot_pixel(paddle2x, paddle2y+20+line, true); // of time
+              plot_pixel(paddle1x, paddle1y+20+line, true); 
+              plot_pixel(paddle2x, paddle2y+20+line, true); 
               plot_pixel(paddle1x, paddle1y-line, true);
               plot_pixel(paddle2x, paddle2y-line, true);
             }*/
@@ -565,7 +529,7 @@ while(!debug) {    // fix crooked line ( Has to do with the PIO TX FIFOs, not jo
             //sprite16_draw(paddle2x, paddle2y, sprite);
             plot_pixel(ballx, bally, false);
             if(gameover){
-              draw_picture(100, 100, 51, picture, true); // drawing picture causes 
+              draw_picture(100, 100, 51, picture, true); 
               sprite16_draw(200, 200, sprite, true);
               sleep_ms(1000);
               draw_picture(100, 100, 51, picture, false);
@@ -574,101 +538,8 @@ while(!debug) {    // fix crooked line ( Has to do with the PIO TX FIFOs, not jo
             }
           
           
-      //draw_picture(100, 100, 51, picture, true);
-      //sleep_ms(100); // Refresh Rate : takes care of distored pixels when a sprite gets continously drawn in vram
-      //draw_picture(100, 100, 51, picture, false);
+     
       }
-     }
-
-     if(sprite_demo){   // the video signal is stable enough to see sprite animation working on the car monitor
-                        // the video distortion is all from multicore operation
-                        // interrupts, spinlocks, or DMA channel status needs to make it so vram can be used by both smoothly
-                        // worst case is we need to use external vram for easier multicore overview
-       // B,Y,SL,ST,U,D,L,R,A,X,LS,RS
-
-       while(1){        // rightM spriteX 10 to 18 & leftM spriteX 0-8
-
-          read_Controller();
-          //uint32_t currentMillis = time_us_32();            
-          
-          
-          
-          
-          //sprite16_draw(playerx, playery-16, spritesP1[spritePointer], true);
-          //sprite16_draw(playerx-16, playery, spritesP1[spritePointer], true);
-          //sprite16_draw(playerx, playery+16, spritesP1[spritePointer], true);
-          //sprite16_draw(playerx+32, playery, spritesP1[spritePointer], true);
-          
-        
-
-          if(currentMillis - refresh > 16000) { // sprite animation change timer ( but having the whole game speed this way didnt work well first time)
-              // save the last time you blinked the LED 
-              refresh = currentMillis;
-              //sprite16_draw(playerx, playery, spritesP1[spritePointer], false);
-              //sprite16_draw(playerx, playery-16, spritesP1[spritePointer], false);
-              //sprite16_draw(playerx-16, playery, spritesP1[spritePointer], false);
-              //sprite16_draw(playerx, playery+16, spritesP1[spritePointer], false);
-              //sprite16_draw(playerx+32, playery, spritesP1[spritePointer], false);
-          
-
-          if(!buts[6]){
-          --playerx;
-            if(currentMillis - spriteT > 100000) { // button presses & sprite movement
-              spriteT = currentMillis;
-              ++spritePointer;
-              if(spritePointer >= 8){
-                      spritePointer = 0;
-                }
-            }
-          }
-          if(!buts[7]){
-            ++playerx;
-            if(currentMillis - spriteT > 100000) { 
-              spriteT = currentMillis;
-              ++spritePointer;
-              if(spritePointer >= 18 || spritePointer < 10){
-                      spritePointer = 10;
-                }
-            }
-          }
-          if(!buts[4]) --playery;
-          if(!buts[5]) ++playery;
-          }
-          
-          
-         // uint32_t currentMillis = multicore_fifo_pop_blocking();
-           //   clear_screen = currentMillis;
-
-        //sprite16_draw(playerx, playery, spritesP1[spritePointer], true);
-        
-        //sleep_ms(16); // delay an entire frame (this is the current jitter bandaid) 
-        
-//( jitter isnt millis timing its the fact that both cores are running at the same time, it causes jitter in the other core)
-// Have to increase efficiency in the other core, this animation timing is fine
-         
-          /*if(!digitalRead(Left)){
-              if(!facingL && !slash) spriteX = 10; 
-                  facingL = true;
-              if(pause - deb >= 5){  
-                  deb = pause;
-                  if(x >= 10) x--;
-              }
-              if(pause - SpriteT >= 50 && !slash){ 
-                  SpriteT = pause;
-                  if(!slash) ++spriteX;
-                    if(spriteX >= 18){
-                      if(!slash) spriteX = 10;
-                    }
-                  }
-          }
-          if(facingL && digitalRead(Left)){ 
-            facingL = false;
-            if(!slash) spriteX = 9; 
-            }*/
-
-
-       }
-
      }
 
 
@@ -678,9 +549,7 @@ while(!debug) {    // fix crooked line ( Has to do with the PIO TX FIFOs, not jo
     
     
 
-// (63.5uS x 263 = .0167 = 59.8Hz frame refresh rate)
 
-//      15.748 KHz
 
   }
 }
