@@ -1,0 +1,144 @@
+;
+; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+;
+; SPDX-License-Identifier: BSD-3-Clause
+;
+                    
+
+; then fix DMA 
+
+.program NTSC_Sync  
+
+    ; .5uS clock cycle 
+.wrap_target
+    set x, 28
+    set y, 8
+Line:       
+    set pins, 0 [8] ; low around 5uS = 10 cycles
+high:
+    set pins, 1 [31] ; high for around 58.5uS = 117 cycles
+    nop [31]
+    nop [31]
+    nop [19] ; 19
+    jmp x--, Line
+    set pins, 0 [6]
+    set x, 28       ; so no time is added to the signal when registers are reloaded 
+    jmp y--, high
+    set pins, 0 [8] ; 
+    set pins, 1 [31] ;          ; so in the 29 x 9 loop above we get 261 lines, then the last line takes place and then vsync
+    nop [31]
+    nop [31]
+    nop [19] ; 19
+    set pins, 0
+    set x, 31 ; can be shortened    ;set y, 1   ; x = 31, y = 8
+syncV:          ; Vsync after 262 lines
+    jmp x--, syncV [2] 
+    ;set x, 31 
+    ;jmp y--, syncV
+.wrap   
+                    ; 14 NTSC + 12 PIXEL + 28 instructions used
+.program pixels 
+
+.wrap_target 
+end:                                        
+    set pins, 0 ;   48nS per cycle
+    wait 0 PIN, 0 ; 
+    wait 1 PIN, 0  ;   backporch delays ( if the delay wasn't long enough the frame would have a left offset )
+    nop [31]
+    nop [31] 
+    set y, 7        ; 4.7uS backporch per scanline
+    set x, 31 
+    pull [23]      ; decreased backporch since Hsyncs are around 5uS so we need 4.4 backporch   
+push_video: ; 52.6uS
+   out pins, 1 [2]  ;  total time and with the added instructions below do not interfere with front porch after the entire video signal
+   ;set pins, 1 [2]
+   jmp x--, push_video 
+   set x, 31
+   jmp !y, end ; if y is 0 avoid pulling from TX FIFO again because that will screw up all the pixels on screen & repeat values
+   pull
+   jmp y--, push_video      
+.wrap                       
+
+; 12 instructions 
+
+% c-sdk {
+static inline void NTSC_Sync_program_init(PIO pio, uint sm, uint offset, uint pin) {
+    pio_sm_config c = NTSC_Sync_program_get_default_config(offset);
+
+    // Map the state machine's OUT pin group to one pin, namely the `pin`
+    // parameter to this function.
+    //sm_config_set_out_pins(&c, pin, 1);
+    sm_config_set_set_pins(&c, pin, 1);
+    // Set this pin's GPIO function (connect PIO to the pad)
+    pio_gpio_init(pio, pin);
+    // Set the pin direction to output at the PIO
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+    sm_config_set_clkdiv(&c, 62.5f);
+
+    // Load our configuration, and jump to the start of the program
+    pio_sm_init(pio, sm, offset, &c);
+    // Set the state machine running
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+static inline void pixels_program_init(PIO pio, uint sm, uint offset, uint pin, uint PIN) {
+    pio_sm_config c = pixels_program_get_default_config(offset);
+
+    // Map the state machine's OUT pin group to one pin, namely the `pin`
+    // parameter to this function.
+    sm_config_set_out_pins(&c, pin, 1);
+    sm_config_set_set_pins(&c, pin, 1);
+    sm_config_set_in_pins(&c, PIN);
+
+    // Set this pin's GPIO function (connect PIO to the pad)
+    pio_gpio_init(pio, pin);
+    pio_gpio_init(pio, PIN);
+
+    // Set the pin direction to output at the PIO
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true); // out
+    pio_sm_set_consecutive_pindirs(pio, sm, PIN, 1, false); // in
+
+    sm_config_set_clkdiv(&c, 6); // 125MHz / 6 = 20.8MHz = 48nS cycles
+    
+    //sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+    // Load our configuration, and jump to the start of the program
+    pio_sm_init(pio, sm, offset, &c);
+    // Set the state machine running
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
+
+/*
+PIO TV bug fix attempt 
+
+.wrap_target
+start:
+    set pins, 0 ; Drive pin Low
+    jmp loop
+loop:
+    pull ; wait for sync RISE trigger 
+    out x, 1 ; put that 0 into x reg
+    jmp !x delay [30] ; check if its a 0 
+delay:
+    nop [30] 
+    nop [30] ; 500-700nS delay ( 1 cycle = 8nS )
+    set pins, 1 ; then drive pin HIGH to trigger pixel pio
+    set y 1
+    mov isr, y ; place something into the ISR
+spin:               ; 58800nS
+    set x 31
+    set y 31 ; fill rest of delay in with side delays
+stall:
+    nop [4]
+    jmp y--, stall
+    set y 31
+    jmp x--, stall
+stop:          
+    push ; notify the main processor
+    pull ; wait for sync LOW trigger
+    out x, 1
+    jmp !x start                    ; 12 instructions, 20 left
+.wrap   
+
+*/
