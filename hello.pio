@@ -30,13 +30,13 @@ high:
     nop [31]
     nop [19] ; 19
     set pins, 0
-    set x, 31 ; can be shortened    ;set y, 1   ; x = 31, y = 8
-syncV:          ; Vsync after 262 lines
+    set x, 31 
+syncV:          
     jmp x--, syncV [2] 
     ;set x, 31 
     ;jmp y--, syncV
 .wrap   
-                    ; 14 NTSC + 12 PIXEL + 28 instructions used
+                    
 .program pixels 
 
 .wrap_target 
@@ -46,15 +46,15 @@ end:
     wait 1 PIN, 0  ;   backporch delays ( if the delay wasn't long enough the frame would have a left offset )
     nop [31]
     nop [31] 
-    set y, 7        ; 4.7uS backporch per scanline
+    set y, 7        
     set x, 31 
     pull [23]      ; decreased backporch since Hsyncs are around 5uS so we need 4.4 backporch   
 push_video: ; 52.6uS
-   out pins, 1 [2]  ;  total time and with the added instructions below do not interfere with front porch after the entire video signal
+   out pins, 1 [2]  
    ;set pins, 1 [2]
    jmp x--, push_video 
    set x, 31
-   jmp !y, end ; if y is 0 avoid pulling from TX FIFO again because that will screw up all the pixels on screen & repeat values
+   jmp !y, end 
    pull
    jmp y--, push_video      
 .wrap                       
@@ -108,37 +108,3 @@ static inline void pixels_program_init(PIO pio, uint sm, uint offset, uint pin, 
     pio_sm_set_enabled(pio, sm, true);
 }
 %}
-
-/*
-PIO TV bug fix attempt 
-
-.wrap_target
-start:
-    set pins, 0 ; Drive pin Low
-    jmp loop
-loop:
-    pull ; wait for sync RISE trigger 
-    out x, 1 ; put that 0 into x reg
-    jmp !x delay [30] ; check if its a 0 
-delay:
-    nop [30] 
-    nop [30] ; 500-700nS delay ( 1 cycle = 8nS )
-    set pins, 1 ; then drive pin HIGH to trigger pixel pio
-    set y 1
-    mov isr, y ; place something into the ISR
-spin:               ; 58800nS
-    set x 31
-    set y 31 ; fill rest of delay in with side delays
-stall:
-    nop [4]
-    jmp y--, stall
-    set y 31
-    jmp x--, stall
-stop:          
-    push ; notify the main processor
-    pull ; wait for sync LOW trigger
-    out x, 1
-    jmp !x start                    ; 12 instructions, 20 left
-.wrap   
-
-*/
