@@ -5,11 +5,16 @@ In the code currently posted game logic exists on both cores, its possible to ju
 
 In order to build this project you need the pico_sdk cmake file & the pi pico C development setup
 
+
+
+
+NEEDED HARDWARE : 
+
 The hardware setup required are resistors for NTSC sync & video so that they form voltage dividers with the 75 ohm pull down resistance of composite video. 
-
+----------
 Sync should be 300mV when HIGH( Pi Pico is 3.3V logic ) 
-Video should be 700mV when HIGH
-
+Video should be around 700mV when HIGH
+----------
 For Video a 330 ohm resistor will work
 For Sync 2x 330 ohm resistors in series is fine
 
