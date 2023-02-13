@@ -6,6 +6,7 @@ In the code currently posted game logic exists on both cores, its possible to ju
 In order to build this project you need the pico_sdk cmake file & the pi pico C development setup
 
 
+Technical Demo : https://www.youtube.com/watch?v=KGSy8RZiaXA
 
 
 NEEDED HARDWARE : 
